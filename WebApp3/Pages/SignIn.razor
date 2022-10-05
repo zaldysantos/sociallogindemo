@@ -1,0 +1,50 @@
+﻿@inject IJSRuntime _jsRuntime
+@inject NavigationManager _navigationManager
+@inject LocalStorage _localStorage
+
+@page "/signIn"
+
+<p>@status</p>
+
+@code {
+    private string status = "Please wait...";
+
+    protected sealed override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // get user info
+            var userInfo = await _localStorage.GetItem<Dictionary<string, string>>("userInfo"); 
+            if (userInfo != null) // user info found
+            {
+                await _jsRuntime.InvokeVoidAsync("alert", "You are already logged-in.");
+            }
+            else // parse callback response
+            {
+                var url = HttpUtility.ParseQueryString(new Uri(_navigationManager.Uri).Query);
+                var app = HttpUtility.UrlDecode(HttpUtility.UrlEncode(url["app"]));
+                var id = HttpUtility.UrlDecode(HttpUtility.UrlEncode(url["id"]));
+                var name = HttpUtility.UrlDecode(HttpUtility.UrlEncode(url["name"]));
+                var email = HttpUtility.UrlDecode(HttpUtility.UrlEncode(url["email"]));
+                var picture = HttpUtility.UrlDecode(HttpUtility.UrlEncode(url["picture"]));
+                // purge user info
+                await _localStorage.RemoveItem("userInfo");
+                // store user data
+                userInfo = new Dictionary<string, string>();
+                userInfo.Add("username", $"{name} @ {app}");
+                userInfo.Add("app", app);
+                userInfo.Add("id", id);
+                userInfo.Add("name", name);
+                userInfo.Add("email", email);
+                userInfo.Add("picture", picture);
+                await _localStorage.SetItem("userInfo", userInfo);
+
+                await _jsRuntime.InvokeVoidAsync("alert", "You are now logged-in.");
+            }
+            // redirect 
+            _navigationManager.NavigateTo("/user", true); 
+        }
+        // flush changes
+        StateHasChanged();
+    }
+}

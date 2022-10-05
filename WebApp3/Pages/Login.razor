@@ -1,0 +1,130 @@
+﻿@inject IJSRuntime _jsRuntime
+@inject NavigationManager _navigationManager
+@inject LocalStorage _localStorage
+
+@page "/login"
+
+<AuthorizeView>
+    <NotAuthorized>
+        <h3>Login</h3>
+        <hr />
+        <div class="row">
+            <div class="col-xs-12 col-sm-12 col-md-6 col-lg-4 col-xl-3">
+                <button class="btn btn-outline-primary form-control" onclick="popGoogleOneTap()">Continue with Google</button>
+            </div>
+            <div class="col-xs-12 col-sm-12 col-md-6 col-lg-4 col-xl-3">
+                <button class="btn btn-outline-primary form-control" onclick="facebookLoginRequest()">Continue with Facebook</button>
+            </div>
+            <div class="col-xs-12 col-sm-12 col-md-12 col-lg-4 col-xl-6">
+            </div>
+        </div>
+        <hr />
+        <div class="row">
+            <div class="col-xs-12 col-sm-12 col-md-4 col-lg-3 col-xl-2">
+                <label class="col-form-label-lg">
+                    <span class="oi oi-person"></span> Username
+                </label>
+            </div>
+            <div class="col-xs-12 col-sm-12 col-md-5 col-lg-5 col-xl-5">
+                <input id="txtUsername" class="form-control-lg" @bind-value="username" />
+            </div>
+            <div class="col-xs-12 col-sm-12 col-md-3 col-lg-4 col-xl-5">
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-xs-12 col-sm-12 col-md-4 col-lg-3 col-xl-2">
+                <label class="col-form-label-lg">
+                    <span class="oi oi-key"></span> Password
+                </label>
+            </div>
+            <div class="col-xs-12 col-sm-12 col-md-5 col-lg-5 col-xl-5">
+                <input id="txtPassword" type="password" class="form-control-lg" @bind-value="password" />
+            </div>
+            <div class="col-xs-12 col-sm-12 col-md-3 col-lg-4 col-xl-5">
+            </div>
+        </div>
+        <br />
+        <label>Are you a robot?</label>
+        <!-- reCaptcha -->
+        <div id="divReCaptcha" class="g-recaptcha"></div>
+        <br />
+        @if (!isRobot)
+        {
+            <button class="btn btn-lg btn-primary" @onclick="DoLogin" disabled="@isRobot">Login</button>
+        }
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthState { get; set; } // authorization
+
+    private bool isRobot = true; 
+    private string username; 
+    private string password; 
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var authState = await AuthState;
+            if (authState.User.Identity.IsAuthenticated) // logged-in as 'user'
+            {
+                await _jsRuntime.InvokeVoidAsync("alert", "You are already logged-in.");
+                _navigationManager.NavigateTo("/", true); // redirect to home page
+            }
+            else
+            {
+                try
+                { // render reCaptcha
+                    await _jsRuntime.InvokeAsync<int>("reCaptcha", DotNetObjectReference.Create(this), "divReCaptcha", "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"); // https://console.cloud.google.com/apis/api/recaptchaenterprise.googleapis.com
+                }
+                catch (Exception err)
+                {
+                    await _jsRuntime.InvokeVoidAsync("console.log", err);
+                }
+            }
+        }
+        // flush changes
+        StateHasChanged();
+    }
+
+    async void DoLogin() // login button clicked
+    {
+        var isLoginSuccess = !string.IsNullOrWhiteSpace(username) && !string.IsNullOrWhiteSpace(password); // ToDo: login
+        if (isLoginSuccess) // assuming the login was authenticated...
+        {
+            // purge user info
+            await _localStorage.RemoveItem("userInfo");
+            // store user info
+            var userInfo = new Dictionary<string, string>();
+            userInfo.Add("username", username);
+            userInfo.Add("app", typeof(Program).Assembly.GetName().Name);
+            userInfo.Add("id", string.Empty); // user unique id
+            userInfo.Add("name", string.Empty); // user full name
+            userInfo.Add("email", string.Empty); // user email address
+            userInfo.Add("picture", string.Empty); // picture URL
+            await _localStorage.SetItem("userInfo", userInfo);
+
+            await _jsRuntime.InvokeVoidAsync("alert", "You are now logged-in.");
+            // redirect
+            _navigationManager.NavigateTo("/user", true); 
+        }
+        else
+        {
+            await _jsRuntime.InvokeVoidAsync("alert", "Login failed.");
+        }
+    }
+
+    [JSInvokable, EditorBrowsable(EditorBrowsableState.Never)]
+    public void OnSuccessCallback(string response)
+    {
+        isRobot = false; // i am not a robot
+    }
+
+    [JSInvokable, EditorBrowsable(EditorBrowsableState.Never)]
+    public void OnExpiredCallback(string response)
+    {
+        isRobot = true;
+    }
+}

@@ -1,0 +1,50 @@
+﻿@inject LocalStorage _localStorage
+
+@*@attribute [Authorize]*@
+@page "/user"
+
+<h3>My Profile</h3>
+<hr />
+<AuthorizeView>
+    <NotAuthorized>
+        <p>Please <a href="/login">login</a> to continue...</p>
+    </NotAuthorized>
+    <Authorized>
+        @if (userInfo != null)
+        {
+            var username = userInfo["username"];
+            var app = userInfo["app"];
+            var id = userInfo["id"];
+            var name = userInfo["name"];
+            var email = userInfo["email"];
+            var picture = userInfo["picture"];
+            <div class="row">
+                <div class="col-xs-12 col-sm-5 col-md-4 col-lg-3 col-xl-2">
+                    <img alt="picture" src="@picture" style="width: 100%;" />
+                </div>
+                <div class="col-xs-12 col-sm-7 col-md-8 col-lg-9 col-xl-10">
+                    <label>App:</label> <b>@app</b><br />
+                    <label>ID:</label> <b>@id</b><br />
+                    <label>Name:</label> <b>@name</b><br />
+                    <label>Email:</label> <b>@email</b><br />
+                </div>
+            </div>
+        }
+    </Authorized>
+</AuthorizeView>
+
+@code {
+    private Dictionary<string, string> userInfo; 
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // get user info
+            userInfo = await _localStorage.GetItem<Dictionary<string, string>>("userInfo"); 
+        }
+        // flush changes
+        StateHasChanged();
+    }
+}
+
