@@ -108,7 +108,7 @@ function facebookLoginResponse() {
             + "&id=" + encodeURIComponent(response.id)
             + "&name=" + encodeURIComponent(response.name)
             + "&email=" + encodeURIComponent(response.email)
-            + "&picture=" + encodeURIComponent(response.picture);
+            + "&picture=" + encodeURIComponent("https://graph.facebook.com/" + response.id + "/picture?type=large&access_token=427522569481472|OmsT9jKIwNuk463Qo3BquOOdXrk");
     });
 }
 
